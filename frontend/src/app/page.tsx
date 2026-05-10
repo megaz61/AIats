@@ -187,6 +187,10 @@ export default function Dashboard() {
             <p><strong className="text-indigo-900">View Details:</strong> Click the down arrow (expand icon) in the Action column to read the detailed AI Summary for each candidate.</p>
           </div>
         </div>
+        <div className="mt-4 p-3 bg-amber-50/80 border border-amber-200/60 rounded-xl text-xs text-amber-800 flex items-start gap-2 leading-relaxed">
+          <span className="text-sm">⚠️</span>
+          <p><strong>Disclaimer:</strong> This system is currently under active development. The Match Score and AI Summary are designed to assist the screening process, but they may have limitations. Recruiters are highly advised to manually review the original CVs to ensure absolute accuracy before making hiring decisions.</p>
+        </div>
       </div>
 
       <div className="glass-panel rounded-2xl overflow-hidden border border-white/40 shadow-sm">

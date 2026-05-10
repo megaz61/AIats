@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+pydantic-settings
+python-dotenv
+python-multipart
+pdfplumber
+openai
+huggingface_hub
+psycopg2-binary

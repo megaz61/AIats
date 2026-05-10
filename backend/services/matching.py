@@ -17,15 +17,19 @@ client_llm = AsyncOpenAI(
 )
 
 def get_embedding(text: str):
-    data = client_embed.feature_extraction(text, model="sentence-transformers/all-MiniLM-L6-v2")
-    if hasattr(data, "tolist"):
-        data = data.tolist()
-        
-    if isinstance(data, list) and len(data) > 0:
-        if isinstance(data[0], list):
-            return data[0]
+    try:
+        data = client_embed.feature_extraction(text, model="sentence-transformers/all-MiniLM-L6-v2")
+        if hasattr(data, "tolist"):
+            data = data.tolist()
+            
+        if isinstance(data, list) and len(data) > 0:
+            if isinstance(data[0], list):
+                return data[0]
+            return data
         return data
-    return data
+    except Exception as e:
+        print(f"Embedding error: {e}")
+        return [0.0] * 384
 
 def cosine_similarity(v1, v2):
     dot_product = sum(a * b for a, b in zip(v1, v2))

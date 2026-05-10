@@ -113,12 +113,12 @@ export default function ManageJobsPage() {
         </p>
       </div>
 
-      {/* List Section */}
-      <div className="glass-panel rounded-2xl overflow-hidden border border-white/40 shadow-sm">
+      {/* Desktop List Section */}
+      <div className="hidden md:block glass-panel rounded-2xl border border-white/40 shadow-sm w-full overflow-hidden">
         <div className="p-6 border-b border-slate-200/50">
           <h2 className="text-lg font-semibold text-slate-800">Active Jobs</h2>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto w-full">
           <table className="min-w-full divide-y divide-slate-200/50">
             <thead className="bg-slate-50/50">
               <tr>
@@ -165,6 +165,41 @@ export default function ManageJobsPage() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Mobile Card List Section */}
+      <div className="block md:hidden space-y-4">
+        <div className="flex items-center mb-2 px-2">
+          <h2 className="text-lg font-semibold text-slate-800">Active Jobs</h2>
+        </div>
+        {loading ? (
+           <div className="p-6 text-center text-sm text-slate-500 bg-white/40 rounded-2xl border border-white/40 shadow-sm">Loading jobs...</div>
+        ) : jobs.length === 0 ? (
+           <div className="p-6 text-center text-sm text-slate-500 bg-white/40 rounded-2xl border border-white/40 shadow-sm">No jobs found. Create one above.</div>
+        ) : (
+          jobs.map((job) => (
+            <div key={job.id} className="bg-white/60 backdrop-blur-sm border border-slate-200/60 rounded-2xl p-4 shadow-sm flex flex-col gap-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">{job.title}</h3>
+                <p className="text-sm text-slate-600 mt-1 line-clamp-3">{job.description}</p>
+              </div>
+              <div className="flex justify-end space-x-3 pt-3 border-t border-slate-100">
+                <button
+                  onClick={() => handleEdit(job)}
+                  className="text-sm font-medium text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1.5 rounded-lg"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(job.id)}
+                  className="text-sm font-medium text-red-600 hover:text-red-900 bg-red-50 px-3 py-1.5 rounded-lg"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       {/* Form Section */}

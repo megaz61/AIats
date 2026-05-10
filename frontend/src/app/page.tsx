@@ -33,6 +33,7 @@ export default function Dashboard() {
   const [cvUrlToView, setCvUrlToView] = useState<string | null>(null);
   const [isLoadingPdf, setIsLoadingPdf] = useState(false);
   const [expandedCandidateId, setExpandedCandidateId] = useState<number | null>(null);
+  const [isExplanationOpen, setIsExplanationOpen] = useState(false);
 
   const toggleExpand = (id: number) => {
     setExpandedCandidateId(prev => prev === id ? null : id);
@@ -166,9 +167,18 @@ export default function Dashboard() {
 
       {/* Quick Guide */}
       <div className="bg-indigo-50/50 backdrop-blur-sm border border-indigo-100/60 rounded-2xl p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-indigo-900 flex items-center gap-2 mb-3">
-          <span>🚀</span> Quick Guide: How to Use the AI ATS
-        </h2>
+        <div className="flex justify-between items-center mb-3">
+          <h2 className="text-lg font-semibold text-indigo-900 flex items-center gap-2">
+            <span>🚀</span> Quick Guide: How to Use the AI ATS
+          </h2>
+          <button 
+            onClick={() => setIsExplanationOpen(true)}
+            className="text-sm px-3 py-1.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-medium rounded-lg transition-colors flex items-center gap-1"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            How AI Matching Works
+          </button>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-indigo-800/80">
           <div className="flex gap-2">
             <span className="font-bold text-indigo-600">1.</span>
@@ -405,6 +415,71 @@ export default function Dashboard() {
                   </div>
                 </object>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Explanation Modal */}
+      {isExplanationOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white rounded-2xl w-full max-w-3xl shadow-xl border border-slate-100 my-8">
+            <div className="flex justify-between items-center p-6 border-b border-slate-100">
+              <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                <span>🧠</span> Cara Kerja Logika AI Match Score
+              </h3>
+              <button 
+                onClick={() => setIsExplanationOpen(false)}
+                className="text-slate-400 hover:text-red-500 transition-colors p-1 bg-slate-100 hover:bg-red-50 rounded-lg"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="p-6 space-y-6 text-slate-700 text-sm leading-relaxed max-h-[70vh] overflow-y-auto">
+              <div>
+                <h4 className="font-bold text-indigo-900 text-base mb-2">1. Apa bedanya "Semantic Matching" dengan Pencarian Keyword Biasa?</h4>
+                <ul className="list-disc pl-5 space-y-2">
+                  <li><strong>Pencarian Biasa (Tradisional):</strong> Mencari teks yang persis sama. Jika kriteria adalah "Programmer" tapi CV menulis "Software Developer", sistem biasa memberi nilai 0 karena ejaannya berbeda.</li>
+                  <li><strong>Semantic Matching (AI):</strong> Membaca makna dan konteks kalimat. AI paham bahwa "Programmer" dan "Software Developer" memiliki arti yang sama, sehingga tetap terdeteksi cocok walaupun ejaannya berbeda.</li>
+                </ul>
+              </div>
+              
+              <div>
+                <h4 className="font-bold text-indigo-900 text-base mb-2">2. Bagaimana model all-MiniLM-L6-v2 menghitung skor?</h4>
+                <p className="mb-2">Model AI dari Hugging Face ini bekerja sebagai "penerjemah" teks menjadi titik kordinat angka (Vector Embeddings):</p>
+                <ul className="list-decimal pl-5 space-y-1">
+                  <li>AI mengubah Deskripsi Pekerjaan (syarat HRD) menjadi satu set titik angka.</li>
+                  <li>AI juga mengubah isi keahlian di CV Kandidat menjadi titik angka yang lain.</li>
+                  <li>Sistem lalu mengukur jarak antara kedua titik tersebut (menggunakan rumus Cosine Similarity). Semakin dekat jaraknya, semakin tinggi persentase kecocokannya.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-indigo-900 text-base mb-2">3. Pembagian Bobot Skor (Sistem Hybrid)</h4>
+                <p className="mb-2">Sistem ini menggunakan metode Hybrid (campuran) agar penilaian lebih adil, realistis, dan kebal dari manipulasi kata-kata:</p>
+                <div className="space-y-3">
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <span className="font-bold text-indigo-600">Semantic Score (Bobot 40%):</span> Murni penilaian dari AI all-MiniLM-L6-v2 mengenai seberapa mirip makna CV kandidat dengan kriteria pekerjaan.
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <span className="font-bold text-indigo-600">Hard Skill Match (Bobot 30%):</span> Mengecek kecocokan skill mutlak/wajib. Memastikan skill yang diminta HRD benar-benar dimiliki kandidat.
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <span className="font-bold text-indigo-600">Experience Match (Bobot 20%):</span> Menilai pengalaman. Jika pengalaman kandidat lebih besar atau sama dengan syarat minimal HRD, nilainya 100%. Jika kurang, nilainya dipotong.
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <span className="font-bold text-indigo-600">Education Match (Bobot 10%):</span> Penilaian latar belakang pendidikan (saat ini sistem memberikan nilai penuh otomatis).
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex justify-end">
+              <button 
+                onClick={() => setIsExplanationOpen(false)}
+                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl transition-colors shadow-sm"
+              >
+                Tutup Penjelasan
+              </button>
             </div>
           </div>
         </div>

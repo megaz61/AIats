@@ -171,9 +171,9 @@ export default function ManageJobsPage() {
           <table className="min-w-full divide-y divide-slate-200/50">
             <thead className="bg-slate-50/50">
               <tr>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider w-1/4">Title</th>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider w-1/2">Description</th>
-                <th scope="col" className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider w-1/4">Actions</th>
+                <th scope="col" className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider w-1/4">Title</th>
+                <th scope="col" className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider w-1/2">Description</th>
+                <th scope="col" className="px-4 sm:px-6 py-3 sm:py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider w-1/4">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200/50 bg-white/40">
@@ -188,13 +188,13 @@ export default function ManageJobsPage() {
               ) : (
                 jobs.map((job) => (
                   <tr key={job.id} className="hover:bg-white/60 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                       <span className="text-sm font-medium text-slate-900">{job.title}</span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 sm:px-6 py-3 sm:py-4">
                       <p className="text-sm text-slate-600 line-clamp-2">{job.description}</p>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right space-x-3">
+                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right space-x-3">
                       <button 
                         onClick={() => handleEdit(job)}
                         className="text-sm font-medium text-indigo-600 hover:text-indigo-900"

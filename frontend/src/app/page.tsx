@@ -208,11 +208,11 @@ export default function Dashboard() {
           <table className="min-w-full divide-y divide-slate-200/50">
             <thead className="bg-slate-50/50">
               <tr>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Candidate</th>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Applied For</th>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Experience</th>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Match Score</th>
-                <th scope="col" className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
+                <th scope="col" className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Candidate</th>
+                <th scope="col" className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Applied For</th>
+                <th scope="col" className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Experience</th>
+                <th scope="col" className="px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Match Score</th>
+                <th scope="col" className="px-4 sm:px-6 py-3 sm:py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200/50 bg-white/40">
@@ -228,26 +228,26 @@ export default function Dashboard() {
                 filteredCandidates.map((candidate) => (
                   <React.Fragment key={candidate.id}>
                   <tr className="hover:bg-white/60 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                       <div className="flex flex-col">
                         <span className="text-sm font-medium text-slate-900">{candidate.name}</span>
                         <span className="text-sm text-slate-500">{candidate.email}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                       <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-medium border border-slate-200">
                         {getJobTitle(candidate.job_id)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                       <span className="text-sm text-slate-700">{candidate.experience_years} years</span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${getScoreColor(candidate.match_score)}`}>
                         {candidate.match_score !== null ? `${candidate.match_score}%` : "N/A"}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                       <button
                         onClick={() => toggleExpand(candidate.id)}
                         className="text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-lg transition-colors inline-block"
@@ -402,10 +402,10 @@ export default function Dashboard() {
                   </div>
                 </div>
               ) : (
-                <object 
-                  data={`${cvUrlToView}#view=FitH`} 
-                  type="application/pdf"
+                <iframe 
+                  src={`${cvUrlToView}#view=FitH`} 
                   className="w-full h-full border-0"
+                  title="CV Viewer"
                 >
                   <div className="flex flex-col items-center justify-center h-full p-8 text-center">
                     <p className="text-slate-600 mb-4">Browser Anda tidak mendukung preview PDF langsung.</p>
@@ -413,7 +413,7 @@ export default function Dashboard() {
                       Download PDF
                     </a>
                   </div>
-                </object>
+                </iframe>
               )}
             </div>
           </div>

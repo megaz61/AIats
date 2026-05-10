@@ -206,7 +206,7 @@ export default function UploadPage() {
       </div>
 
       <div 
-        className={`glass-panel border-2 border-dashed rounded-3xl p-12 transition-all duration-200 text-center
+        className={`glass-panel border-2 border-dashed rounded-3xl p-8 sm:p-12 transition-all duration-200 text-center
           ${isDragging ? 'border-indigo-500 bg-indigo-50/30' : 'border-slate-300 hover:border-indigo-400'}
           ${isUploading ? 'opacity-70 pointer-events-none' : ''}`}
         onDragOver={handleDragOver}

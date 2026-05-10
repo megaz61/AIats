@@ -164,6 +164,31 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Quick Guide */}
+      <div className="bg-indigo-50/50 backdrop-blur-sm border border-indigo-100/60 rounded-2xl p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-indigo-900 flex items-center gap-2 mb-3">
+          <span>🚀</span> Quick Guide: How to Use the AI ATS
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-indigo-800/80">
+          <div className="flex gap-2">
+            <span className="font-bold text-indigo-600">1.</span>
+            <p><strong className="text-indigo-900">Define the Role:</strong> Go to the &quot;Manage Jobs&quot; page to add a new job posting and define the required skills or criteria.</p>
+          </div>
+          <div className="flex gap-2">
+            <span className="font-bold text-indigo-600">2.</span>
+            <p><strong className="text-indigo-900">Upload Resumes:</strong> Navigate to the &quot;Upload CV&quot; page to process candidates. You can batch upload up to 15 PDF files at once.</p>
+          </div>
+          <div className="flex gap-2">
+            <span className="font-bold text-indigo-600">3.</span>
+            <p><strong className="text-indigo-900">Review Matches:</strong> Return to this Dashboard to see the ranked candidates. The system automatically calculates the Match Score and generates an AI Summary.</p>
+          </div>
+          <div className="flex gap-2">
+            <span className="font-bold text-indigo-600">4.</span>
+            <p><strong className="text-indigo-900">View Details:</strong> Click the down arrow (expand icon) in the Action column to read the detailed AI Summary for each candidate.</p>
+          </div>
+        </div>
+      </div>
+
       <div className="glass-panel rounded-2xl overflow-hidden border border-white/40 shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200/50">

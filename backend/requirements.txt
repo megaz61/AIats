@@ -9,3 +9,4 @@ pdfplumber
 openai
 huggingface_hub
 psycopg2-binary
+pymupdf

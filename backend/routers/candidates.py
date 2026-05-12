@@ -36,15 +36,28 @@ async def upload_cv(file: UploadFile = File(...)):
         import re
         sanitized_filename = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', file.filename)
         
-        # Save file to uploads/
+        # Compress PDF if possible
+        try:
+            import fitz
+            doc = fitz.open(stream=contents, filetype="pdf")
+            contents_to_save = doc.tobytes(garbage=4, deflate=True)
+            doc.close()
+        except Exception as e:
+            print("PDF Compression failed, using original:", e)
+            contents_to_save = contents
+        
+        # Save file to .uploads/
         file_ext = os.path.splitext(sanitized_filename)[1]
         unique_filename = f"{uuid.uuid4().hex}{file_ext}"
-        local_path = os.path.join("uploads", unique_filename)
+        
+        # Ensure .uploads directory exists
+        os.makedirs(".uploads", exist_ok=True)
+        local_path = os.path.join(".uploads", unique_filename)
         
         with open(local_path, "wb") as f:
-            f.write(contents)
+            f.write(contents_to_save)
             
-        resume_url = f"/uploads/{unique_filename}"
+        resume_url = f"/.uploads/{unique_filename}"
         
         pdf_text = extract_text_from_pdf(contents)
         
@@ -52,9 +65,9 @@ async def upload_cv(file: UploadFile = File(...)):
 - 'name' (string)
 - 'email' (string)
 - 'skills' (array of strings)
-- 'total_experience_years' (integer)
+- 'total_experience_years' (integer) -> Hitung total durasi pengalaman kerja dalam hitungan tahun secara teliti. Jika belum ada pengalaman atau kurang dari 1 tahun, isi 0.
 - 'education' (array of strings)
-- 'experience_details' (array of strings)
+- 'experience_details' (array of strings) -> cantumkan posisi, nama perusahaan, dan durasi.
 - 'projects' (array of strings)
 
 Jangan ada teks tambahan di luar JSON.
@@ -141,12 +154,15 @@ async def get_cv_base64(filename: str):
     import base64
     import os
     actual_filename = filename if filename.endswith(".pdf") else f"{filename}.pdf"
-    file_path = os.path.join("uploads", actual_filename)
+    file_path = os.path.join(".uploads", actual_filename)
+    if not os.path.exists(file_path):
+        file_path = os.path.join("uploads", actual_filename)
+        
     abs_path = os.path.abspath(file_path)
     if os.path.exists(file_path):
         try:
-            with open(file_path, "rb") as f:
-                encoded = base64.b64encode(f.read()).decode('utf-8')
+            with open(file_path, "rb") as pdf_file:
+                encoded = base64.b64encode(pdf_file.read()).decode("utf-8")
             return {"data": encoded}
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error reading file: {str(e)}")
@@ -172,7 +188,7 @@ def delete_candidate(candidate_id: int, db: Session = Depends(get_db)):
     if candidate.resume_url:
         filename = candidate.resume_url.split("/")[-1]
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        file_path = os.path.join(base_dir, "uploads", filename)
+        file_path = os.path.join(base_dir, ".uploads", filename)
         
         if os.path.exists(file_path):
             try:

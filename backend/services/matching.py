@@ -16,28 +16,7 @@ client_llm = AsyncOpenAI(
     api_key=hf_api_key
 )
 
-def get_embedding(text: str):
-    try:
-        data = client_embed.feature_extraction(text, model="sentence-transformers/all-MiniLM-L6-v2")
-        if hasattr(data, "tolist"):
-            data = data.tolist()
-            
-        if isinstance(data, list) and len(data) > 0:
-            if isinstance(data[0], list):
-                return data[0]
-            return data
-        return data
-    except Exception as e:
-        print(f"Embedding error: {e}")
-        return [0.0] * 384
-
-def cosine_similarity(v1, v2):
-    dot_product = sum(a * b for a, b in zip(v1, v2))
-    norm_a = math.sqrt(sum(a * a for a in v1))
-    norm_b = math.sqrt(sum(b * b for b in v2))
-    if norm_a == 0 or norm_b == 0:
-        return 0.0
-    return dot_product / (norm_a * norm_b)
+# Old embedding functions removed in favor of BGE-M3 via InferenceClient directly
 
 async def calculate_and_save_match_score(db: Session, candidate_id: int):
     candidate = db.query(models.Candidate).filter(models.Candidate.id == candidate_id).first()
@@ -60,16 +39,47 @@ async def calculate_and_save_match_score(db: Session, candidate_id: int):
     job_req = parse_json(job.required_skills)
     job_pref = parse_json(job.preferred_skills)
 
+    cand_edu = parse_json(candidate.education)
+    cand_exp_det = parse_json(candidate.experience_details)
+    cand_proj = parse_json(candidate.projects)
+
+    candidate_full_text = f"Skills: {', '.join(cand_skills)}\nEducation: {', '.join(cand_edu)}\nExperience: {', '.join(cand_exp_det)}\nProjects: {', '.join(cand_proj)}"
+
     # 1. Semantic Score (40%)
-    candidate_text = ", ".join(cand_skills) if cand_skills else ""
     job_text = ", ".join(job_req + job_pref) if (job_req or job_pref) else str(job.description)
     
-    if not candidate_text.strip() or not job_text.strip():
+    if not candidate_full_text.strip() or not job_text.strip():
         semantic_score = 0.0
     else:
-        emb_candidate = get_embedding(candidate_text)
-        emb_job = get_embedding(job_text)
-        semantic_score = cosine_similarity(emb_candidate, emb_job) * 100
+        chunk_size = 1000
+        overlap = 200
+        chunks = []
+        start = 0
+        while start < len(candidate_full_text):
+            end = start + chunk_size
+            chunks.append(candidate_full_text[start:end])
+            start += chunk_size - overlap
+        if not chunks:
+            chunks = [""]
+            
+        try:
+            result = client_embed.sentence_similarity(
+                job_text,
+                chunks,
+                model="BAAI/bge-m3",
+            )
+            avg_score = sum(result) / len(result)
+            
+            THRESHOLD = 0.35
+            if avg_score < THRESHOLD:
+                normalized_score = 0.05 * (avg_score / THRESHOLD)
+            else:
+                normalized_score = avg_score
+                
+            semantic_score = normalized_score * 100
+        except Exception as e:
+            print(f"Embedding error: {e}")
+            semantic_score = 0.0
 
     # 2. Hard Skill Match (30%)
     cand_skills_lower = [s.lower() for s in cand_skills]
@@ -102,19 +112,41 @@ async def calculate_and_save_match_score(db: Session, candidate_id: int):
     final_score = (semantic_score * 0.4) + (skill_score * 0.3) + (exp_score * 0.2) + (edu_score * 0.1)
 
     # 5. Explainable AI Summary
-    prompt = f"""Kamu adalah asisten HR. Buat ringkasan evaluasi 2 kalimat tentang kandidat ini.
-Kandidat memiliki skill: {', '.join(cand_skills)}.
+    prompt = f"""Kamu adalah asisten HR. Evaluasi kandidat ini berdasarkan Kriteria Pekerjaan dan Teks CV Kandidat.
+Bandingkan secara langsung kriteria yang diminta dengan pengalaman/skill yang ada di CV.
+
+Aturan Penting:
+1. Jika pengalaman kandidat LEBIH dari atau SAMA DENGAN pengalaman minimal yang diminta, ini adalah hal bagus. Masukkan sebagai "Kelebihan", JANGAN PERNAH memasukkannya sebagai "Kekurangan".
+2. Jika kandidat belum memenuhi syarat, gunakan frasa "kurang cocok" (jangan gunakan kata "tidak cocok").
+
+Kriteria Pekerjaan:
+{job.description}
+Kriteria wajib: {', '.join(job_req)}
+Pengalaman minimal: {min_exp} tahun
+
+Teks CV Kandidat:
+{candidate_full_text}
+Pengalaman kandidat: {cand_exp} tahun
+
 Kandidat kekurangan skill wajib: {', '.join(missing_req) if missing_req else 'Tidak ada'}.
-Pengalaman kandidat: {cand_exp} tahun (Syarat minimum: {min_exp} tahun).
-Jelaskan kelebihan dan kekurangannya secara profesional tanpa bertele-tele.
-Jika Bahasa yang digunakan didalam CV berbeda dengan bahasa yang ada di dekripsi atau kriteria maka translate dulu ke dalam bahasa yang sama sebelum mengevaluasi"""
+
+Buat output HANYA dengan struktur persis seperti berikut tanpa tambahan apa pun (gunakan format Markdown):
+Kelebihan:
+- [Poin 1]
+- [Poin 2]
+
+Kekurangan:
+- [Poin 1]
+- [Poin 2]
+
+Verdict: [Satu kalimat rekomendasi ringkas apakah kandidat ini cocok atau kurang cocok]"""
     
     try:
         response = await client_llm.chat.completions.create(
             model="meta-llama/Llama-3.1-8B-Instruct:novita",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2,
-            max_tokens=150,
+            max_tokens=300,
         )
         ai_summary = response.choices[0].message.content.strip()
     except Exception as e:

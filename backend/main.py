@@ -10,7 +10,7 @@ from routers import candidates, jobs
 Base.metadata.create_all(bind=engine)
 
 # Create uploads directory if it doesn't exist
-os.makedirs("uploads", exist_ok=True)
+os.makedirs(".uploads", exist_ok=True)
 
 app = FastAPI(title="AI ATS API")
 
@@ -27,9 +27,9 @@ from fastapi.responses import FileResponse
 
 from fastapi import HTTPException
 
-@app.get("/uploads/{filename}")
+@app.get("/.uploads/{filename}")
 async def get_uploaded_file(filename: str):
-    file_path = os.path.join("uploads", filename)
+    file_path = os.path.join(".uploads", filename)
     if os.path.exists(file_path):
         return FileResponse(
             path=file_path, 
@@ -49,3 +49,4 @@ app.include_router(jobs.router, prefix="/api/jobs", tags=["jobs"])
 @app.get("/")
 def read_root():
     return {"message": "Welcome to AI ATS API"}
+ 

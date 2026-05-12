@@ -23,6 +23,55 @@ interface Candidate {
   resume_url: string | null;
 }
 
+const AiSummaryFormatter = ({ summary }: { summary: string | null }) => {
+  if (!summary) return <p className="text-sm text-slate-700">Tidak ada ringkasan AI.</p>;
+
+  const kelebihanMatch = summary.match(/Kelebihan:\s*([\s\S]*?)(?:Kekurangan:|Verdict:|$)/i);
+  const kekuranganMatch = summary.match(/Kekurangan:\s*([\s\S]*?)(?:Verdict:|$)/i);
+  const verdictMatch = summary.match(/Verdict:\s*([\s\S]*)/i);
+
+  const parseList = (text: string) => {
+    return text.split('\n')
+      .map(l => l.trim())
+      .filter(l => l.startsWith('-') || l.startsWith('*'))
+      .map(l => l.replace(/^[-*]\s*/, ''));
+  };
+
+  const kelebihan = kelebihanMatch ? parseList(kelebihanMatch[1]) : [];
+  const kekurangan = kekuranganMatch ? parseList(kekuranganMatch[1]) : [];
+  const verdict = verdictMatch ? verdictMatch[1].trim() : null;
+
+  if (kelebihan.length === 0 && kekurangan.length === 0 && !verdict) {
+    return <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{summary}</p>;
+  }
+
+  return (
+    <div className="space-y-4 text-sm text-slate-700 text-left">
+      {kelebihan.length > 0 && (
+        <div>
+          <strong className="text-green-700 block mb-1">Kelebihan:</strong>
+          <ul className="list-disc pl-5 space-y-1">
+            {kelebihan.map((item, idx) => <li key={idx}>{item}</li>)}
+          </ul>
+        </div>
+      )}
+      {kekurangan.length > 0 && (
+        <div>
+          <strong className="text-red-700 block mb-1">Kekurangan:</strong>
+          <ul className="list-disc pl-5 space-y-1">
+            {kekurangan.map((item, idx) => <li key={idx}>{item}</li>)}
+          </ul>
+        </div>
+      )}
+      {verdict && (
+        <div className="bg-indigo-50 border border-indigo-100 p-3 rounded-lg mt-2 text-indigo-900 font-medium leading-relaxed">
+          <span className="font-bold">Verdict:</span> {verdict.replace(/\*\*/g, '')}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function Dashboard() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -267,9 +316,9 @@ export default function Dashboard() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div>
                             <h4 className="text-sm font-semibold text-slate-900 mb-2">AI Summary</h4>
-                            <p className="text-sm text-slate-700 bg-white p-4 rounded-xl border border-slate-200 shadow-sm leading-relaxed">
-                              {candidate.ai_summary || "Tidak ada ringkasan AI."}
-                            </p>
+                            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                              <AiSummaryFormatter summary={candidate.ai_summary} />
+                            </div>
                             
                             {candidate.score_breakdown && (
                               <div className="mt-4">
@@ -404,9 +453,9 @@ export default function Dashboard() {
               {expandedCandidateId === candidate.id && (
                 <div className="mt-2 p-4 bg-slate-50 rounded-xl border border-slate-200">
                   <h4 className="text-sm font-semibold text-slate-900 mb-2">AI Summary</h4>
-                  <p className="text-sm text-slate-700 bg-white p-3 rounded-lg border border-slate-200 shadow-sm leading-relaxed mb-4">
-                    {candidate.ai_summary || "Tidak ada ringkasan AI."}
-                  </p>
+                  <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm mb-4">
+                    <AiSummaryFormatter summary={candidate.ai_summary} />
+                  </div>
                   
                   {candidate.score_breakdown && (
                     <>
@@ -560,12 +609,13 @@ export default function Dashboard() {
               </div>
               
               <div>
-                <h4 className="font-bold text-indigo-900 text-base mb-2">2. How does the all-MiniLM-L6-v2 model calculate scores?</h4>
+                <h4 className="font-bold text-indigo-900 text-base mb-2">2. How does the BAAI/bge-m3 model calculate scores?</h4>
                 <p className="mb-2">This Hugging Face AI model acts as a "translator" that converts text into numerical coordinates (Vector Embeddings):</p>
                 <ul className="list-decimal pl-5 space-y-1">
-                  <li>The AI converts the Job Description (HR requirements) into a set of numbers.</li>
-                  <li>It also converts the Candidate's CV skills into another set of numbers.</li>
-                  <li>The system then measures the distance between these two sets (using the Cosine Similarity formula). The closer the distance, the higher the match percentage.</li>
+                  <li>The AI takes the Job Description (HR requirements).</li>
+                  <li>It takes the Candidate's full CV text (skills, education, experiences) and splits it into smaller chunks so no context is lost.</li>
+                  <li>The system then measures the similarity between the job description and all the CV chunks. The scores are averaged.</li>
+                  <li><strong>Normalization:</strong> If the average similarity is below 35% (the minimum threshold), the score decays exponentially to near-zero. This aggressively penalizes irrelevant CVs.</li>
                 </ul>
               </div>
 
@@ -574,7 +624,7 @@ export default function Dashboard() {
                 <p className="mb-2">This system uses a Hybrid method to ensure evaluation is fair, realistic, and immune to keyword manipulation:</p>
                 <div className="space-y-3">
                   <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                    <span className="font-bold text-indigo-600">Semantic Score (40% Weight):</span> Pure evaluation from the all-MiniLM-L6-v2 AI regarding how closely the meaning of the candidate's CV matches the job criteria.
+                    <span className="font-bold text-indigo-600">Semantic Score (40% Weight):</span> Pure evaluation from the BGE-M3 AI regarding how closely the meaning of the candidate's CV matches the job criteria.
                   </div>
                   <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
                     <span className="font-bold text-indigo-600">Hard Skill Match (30% Weight):</span> Checks for absolute/mandatory skill matches. Ensures the exact skills requested by HR are possessed by the candidate.

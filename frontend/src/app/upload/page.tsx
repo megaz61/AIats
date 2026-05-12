@@ -116,9 +116,13 @@ export default function UploadPage() {
       
       setFileQueue(prev => prev.map((item, i) => i === index ? { ...item, message: 'Saving candidate...' } : item));
       
-      const candidatePayload = {
-        name: extractedData.name || "Unknown",
-        email: extractedData.email || "unknown@example.com",
+        const finalEmail = (extractedData.email && extractedData.email.includes('@') && !extractedData.email.toLowerCase().includes('unknown'))
+          ? extractedData.email
+          : `candidate_${Date.now()}_${Math.floor(Math.random() * 1000)}@example.com`;
+
+        const candidatePayload = {
+          name: extractedData.name || "Unknown Candidate",
+          email: finalEmail,
         skills: JSON.stringify(extractedData.skills || []),
         education: JSON.stringify(extractedData.education || []),
         experience_details: JSON.stringify(extractedData.experience_details || []),

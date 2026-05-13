@@ -147,6 +147,8 @@ CV Text:
 
 @router.post("/", response_model=schemas.CandidateResponse)
 def create_candidate(candidate: schemas.CandidateCreate, db: Session = Depends(get_db)):
+    import uuid as _uuid
+
     skills_str = candidate.skills
     if isinstance(candidate.skills, list):
         skills_str = json.dumps(candidate.skills)
@@ -156,19 +158,28 @@ def create_candidate(candidate: schemas.CandidateCreate, db: Session = Depends(g
     if not job:
         raise HTTPException(status_code=400, detail=f"Job with id {candidate.job_id} does not exist.")
 
-    # Check if email already exists to prevent Unique constraint error
+    # Check if email already exists
     existing_candidate = db.query(models.Candidate).filter(models.Candidate.email == candidate.email).first()
     if existing_candidate:
-        existing_candidate.name = candidate.name
-        existing_candidate.skills = skills_str
-        existing_candidate.education = candidate.education
-        existing_candidate.experience_details = candidate.experience_details
-        existing_candidate.projects = candidate.projects
-        existing_candidate.experience_years = candidate.experience_years
-        existing_candidate.job_id = candidate.job_id
-        db.commit()
-        db.refresh(existing_candidate)
-        return existing_candidate
+        # Only update if it's the SAME file being re-uploaded (same resume_url)
+        if candidate.resume_url and existing_candidate.resume_url == candidate.resume_url:
+            existing_candidate.name = candidate.name
+            existing_candidate.skills = skills_str
+            existing_candidate.education = candidate.education
+            existing_candidate.experience_details = candidate.experience_details
+            existing_candidate.projects = candidate.projects
+            existing_candidate.experience_years = candidate.experience_years
+            existing_candidate.job_id = candidate.job_id
+            existing_candidate.resume_url = candidate.resume_url
+            db.commit()
+            db.refresh(existing_candidate)
+            return existing_candidate
+        else:
+            # Different file → different candidate who happens to share an email (AI error).
+            # Make the email unique so we can INSERT a new record.
+            parts = candidate.email.rsplit("@", 1)
+            unique_suffix = _uuid.uuid4().hex[:8]
+            candidate.email = f"{parts[0]}_{unique_suffix}@{parts[1] if len(parts) > 1 else 'example.com'}"
 
     db_candidate = models.Candidate(
         name=candidate.name,

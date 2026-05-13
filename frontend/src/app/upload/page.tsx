@@ -152,11 +152,21 @@ export default function UploadPage() {
       const createdCandidate = await createRes.json();
       
       setFileQueue(prev => prev.map((item, i) => i === index ? { ...item, message: 'Calculating match score...' } : item));
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/candidates/${createdCandidate.id}/calculate-match`, {
+      const matchRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/candidates/${createdCandidate.id}/calculate-match`, {
         method: "POST",
       });
-      
-      setFileQueue(prev => prev.map((item, i) => i === index ? { ...item, status: 'success', message: 'Done!' } : item));
+
+      if (!matchRes.ok) {
+        // Data is already saved in DB, but AI scoring failed.
+        // Treat as partial success — don't block the overall flow.
+        const isRateLimit = matchRes.status === 503;
+        if (isRateLimit) setApiLimitError(true);
+        setFileQueue(prev => prev.map((item, i) => i === index
+          ? { ...item, status: 'success', message: '⚠️ Tersimpan, tapi skor AI gagal dihitung. Coba lagi nanti.' }
+          : item));
+      } else {
+        setFileQueue(prev => prev.map((item, i) => i === index ? { ...item, status: 'success', message: 'Done!' } : item));
+      }
       return true;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Error processing file';

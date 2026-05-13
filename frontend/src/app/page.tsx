@@ -122,23 +122,23 @@ export default function Dashboard() {
     try {
       setIsLoadingPdf(true);
       if (!resumeUrl) throw new Error("Resume URL is missing");
-      
+
       const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000';
       const filename = resumeUrl.split('/').pop()?.replace('.pdf', '') || '';
-      
+
       // Bypassing IDM by requesting JSON base64 instead of a raw .pdf URL
       const bypassUrl = `${baseUrl}/api/candidates/cv/${filename}/base64`;
-      
+
       const response = await fetch(bypassUrl, {
         method: "GET",
         headers: { "Accept": "application/json" },
       });
-      
+
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      
+
       const json = await response.json();
       if (!json.data) throw new Error("Invalid base64 response from server");
-      
+
       // Convert base64 string back to binary Blob
       const byteCharacters = atob(json.data);
       const byteNumbers = new Array(byteCharacters.length);
@@ -147,7 +147,7 @@ export default function Dashboard() {
       }
       const byteArray = new Uint8Array(byteNumbers);
       const blob = new Blob([byteArray], { type: 'application/pdf' });
-      
+
       const blobUrl = URL.createObjectURL(blob);
       setCvUrlToView(blobUrl);
     } catch (error) {
@@ -180,14 +180,14 @@ export default function Dashboard() {
     if (score >= 50) return "bg-yellow-50 text-yellow-700 border-yellow-200";
     return "bg-red-50 text-red-700 border-red-200";
   };
-  
+
   const getJobTitle = (jobId: number) => {
     const job = jobs.find(j => j.id === jobId);
     return job ? job.title : "Unknown Job";
   };
 
-  const filteredCandidates = filterJobId === "all" 
-    ? candidates 
+  const filteredCandidates = filterJobId === "all"
+    ? candidates
     : candidates.filter(c => c.job_id === filterJobId);
 
   return (
@@ -199,7 +199,7 @@ export default function Dashboard() {
             Review and manage applicants. Ranked by AI-powered match score.
           </p>
         </div>
-        
+
         <div className="flex items-center space-x-3 bg-white/60 p-2 rounded-xl border border-slate-200/60 shadow-sm backdrop-blur-sm">
           <label className="text-sm font-medium text-slate-600 pl-2">Filter by Job:</label>
           <select
@@ -219,13 +219,13 @@ export default function Dashboard() {
       <div className="bg-white/60 backdrop-blur-sm border border-slate-200/60 rounded-2xl p-4 sm:p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between mb-4">
           <div className="flex flex-wrap gap-3">
-            <button 
+            <button
               onClick={() => setIsQuickGuideOpen(true)}
               className="text-sm px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium rounded-xl transition-colors border border-indigo-100 flex items-center gap-2"
             >
               <span>🚀</span> Quick Guide
             </button>
-            <button 
+            <button
               onClick={() => setIsExplanationOpen(true)}
               className="text-sm px-4 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 font-medium rounded-xl transition-colors border border-purple-100 flex items-center gap-2"
             >
@@ -264,126 +264,126 @@ export default function Dashboard() {
               ) : (
                 filteredCandidates.map((candidate) => (
                   <React.Fragment key={candidate.id}>
-                  <tr className="hover:bg-white/60 transition-colors">
-                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium text-slate-900">{candidate.name}</span>
-                        <span className="text-sm text-slate-500">{candidate.email}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-medium border border-slate-200">
-                        {getJobTitle(candidate.job_id)}
-                      </span>
-                    </td>
-                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                      <span className="text-sm text-slate-700">{candidate.experience_years} years</span>
-                    </td>
-                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${getScoreColor(candidate.match_score)}`}>
-                        {candidate.match_score !== null ? `${candidate.match_score}%` : "N/A"}
-                      </span>
-                    </td>
-                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                      <button
-                        onClick={() => toggleExpand(candidate.id)}
-                        className="text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-lg transition-colors inline-block"
-                        title="View AI Analysis"
-                      >
-                        <svg className={`w-5 h-5 transform transition-transform ${expandedCandidateId === candidate.id ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                      </button>
-                      {candidate.resume_url && (
-                        <button 
-                          onClick={() => handleViewCv(candidate.resume_url!)}
-                          className="text-indigo-500 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 p-2 rounded-lg transition-colors inline-block"
-                          title="View CV"
+                    <tr className="hover:bg-white/60 transition-colors">
+                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium text-slate-900">{candidate.name}</span>
+                          <span className="text-sm text-slate-500">{candidate.email}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-medium border border-slate-200">
+                          {getJobTitle(candidate.job_id)}
+                        </span>
+                      </td>
+                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                        <span className="text-sm text-slate-700">{candidate.experience_years} years</span>
+                      </td>
+                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${getScoreColor(candidate.match_score)}`}>
+                          {candidate.match_score !== null ? `${candidate.match_score}%` : "N/A"}
+                        </span>
+                      </td>
+                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                        <button
+                          onClick={() => toggleExpand(candidate.id)}
+                          className="text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-lg transition-colors inline-block"
+                          title="View AI Analysis"
                         >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                          <svg className={`w-5 h-5 transform transition-transform ${expandedCandidateId === candidate.id ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                         </button>
-                      )}
-                      <button 
-                        onClick={() => setCandidateToDelete(candidate.id)}
-                        className="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition-colors inline-block"
-                        title="Delete Candidate"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                      </button>
-                    </td>
-                  </tr>
-                  {expandedCandidateId === candidate.id && (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-4 bg-slate-50 border-b border-slate-200">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div>
-                            <h4 className="text-sm font-semibold text-slate-900 mb-2">AI Summary</h4>
-                            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                              <AiSummaryFormatter summary={candidate.ai_summary} />
-                            </div>
-                            
-                            {candidate.score_breakdown && (
-                              <div className="mt-4">
-                                <h4 className="text-sm font-semibold text-slate-900 mb-2">Score Breakdown</h4>
-                                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-2">
-                                  {(() => {
-                                    try {
-                                      const breakdown = JSON.parse(candidate.score_breakdown);
-                                      return (
-                                        <>
-                                          <div className="flex justify-between text-sm"><span className="text-slate-500">Semantic Score:</span> <span className="font-medium">{breakdown.semantic_score}%</span></div>
-                                          <div className="flex justify-between text-sm"><span className="text-slate-500">Skill Match:</span> <span className="font-medium">{breakdown.skill_match}%</span></div>
-                                          <div className="flex justify-between text-sm"><span className="text-slate-500">Experience Match:</span> <span className="font-medium">{breakdown.experience_match}%</span></div>
-                                        </>
-                                      );
-                                    } catch (e) {
-                                      return <span className="text-sm text-slate-500">Invalid data</span>;
-                                    }
-                                  })()}
+                        {candidate.resume_url && (
+                          <button
+                            onClick={() => handleViewCv(candidate.resume_url!)}
+                            className="text-indigo-500 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 p-2 rounded-lg transition-colors inline-block"
+                            title="View CV"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setCandidateToDelete(candidate.id)}
+                          className="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition-colors inline-block"
+                          title="Delete Candidate"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                      </td>
+                    </tr>
+                    {expandedCandidateId === candidate.id && (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-4 bg-slate-50 border-b border-slate-200">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                              <h4 className="text-sm font-semibold text-slate-900 mb-2">AI Summary</h4>
+                              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                <AiSummaryFormatter summary={candidate.ai_summary} />
+                              </div>
+
+                              {candidate.score_breakdown && (
+                                <div className="mt-4">
+                                  <h4 className="text-sm font-semibold text-slate-900 mb-2">Score Breakdown</h4>
+                                  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-2">
+                                    {(() => {
+                                      try {
+                                        const breakdown = JSON.parse(candidate.score_breakdown);
+                                        return (
+                                          <>
+                                            <div className="flex justify-between text-sm"><span className="text-slate-500">Semantic Score:</span> <span className="font-medium">{breakdown.semantic_score}%</span></div>
+                                            <div className="flex justify-between text-sm"><span className="text-slate-500">Skill Match:</span> <span className="font-medium">{breakdown.skill_match}%</span></div>
+                                            <div className="flex justify-between text-sm"><span className="text-slate-500">Experience Match:</span> <span className="font-medium">{breakdown.experience_match}%</span></div>
+                                          </>
+                                        );
+                                      } catch (e) {
+                                        return <span className="text-sm text-slate-500">Invalid data</span>;
+                                      }
+                                    })()}
+                                  </div>
                                 </div>
+                              )}
+                            </div>
+
+                            {candidate.score_breakdown && (
+                              <div>
+                                {(() => {
+                                  try {
+                                    const breakdown = JSON.parse(candidate.score_breakdown);
+                                    return (
+                                      <div className="space-y-4">
+                                        <div>
+                                          <h4 className="text-sm font-semibold text-green-700 mb-2 flex items-center gap-1">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                            Matched Skills
+                                          </h4>
+                                          <div className="flex flex-wrap gap-2">
+                                            {breakdown.matched_skills && breakdown.matched_skills.length > 0 ? breakdown.matched_skills.map((s: string, i: number) => (
+                                              <span key={i} className="px-2 py-1 bg-green-50 text-green-700 text-xs rounded-md border border-green-200">{s}</span>
+                                            )) : <span className="text-sm text-slate-500">None</span>}
+                                          </div>
+                                        </div>
+                                        <div>
+                                          <h4 className="text-sm font-semibold text-red-700 mb-2 flex items-center gap-1">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                            Missing Skills
+                                          </h4>
+                                          <div className="flex flex-wrap gap-2">
+                                            {breakdown.missing_skills && breakdown.missing_skills.length > 0 ? breakdown.missing_skills.map((s: string, i: number) => (
+                                              <span key={i} className="px-2 py-1 bg-red-50 text-red-700 text-xs rounded-md border border-red-200">{s}</span>
+                                            )) : <span className="text-sm text-slate-500">None</span>}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  } catch (e) {
+                                    return null;
+                                  }
+                                })()}
                               </div>
                             )}
                           </div>
-                          
-                          {candidate.score_breakdown && (
-                            <div>
-                              {(() => {
-                                try {
-                                  const breakdown = JSON.parse(candidate.score_breakdown);
-                                  return (
-                                    <div className="space-y-4">
-                                      <div>
-                                        <h4 className="text-sm font-semibold text-green-700 mb-2 flex items-center gap-1">
-                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                                          Matched Skills
-                                        </h4>
-                                        <div className="flex flex-wrap gap-2">
-                                          {breakdown.matched_skills && breakdown.matched_skills.length > 0 ? breakdown.matched_skills.map((s: string, i: number) => (
-                                            <span key={i} className="px-2 py-1 bg-green-50 text-green-700 text-xs rounded-md border border-green-200">{s}</span>
-                                          )) : <span className="text-sm text-slate-500">None</span>}
-                                        </div>
-                                      </div>
-                                      <div>
-                                        <h4 className="text-sm font-semibold text-red-700 mb-2 flex items-center gap-1">
-                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                                          Missing Skills
-                                        </h4>
-                                        <div className="flex flex-wrap gap-2">
-                                          {breakdown.missing_skills && breakdown.missing_skills.length > 0 ? breakdown.missing_skills.map((s: string, i: number) => (
-                                            <span key={i} className="px-2 py-1 bg-red-50 text-red-700 text-xs rounded-md border border-red-200">{s}</span>
-                                          )) : <span className="text-sm text-slate-500">None</span>}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  );
-                                } catch (e) {
-                                  return null;
-                                }
-                              })()}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
+                        </td>
+                      </tr>
+                    )}
                   </React.Fragment>
                 ))
               )}
@@ -410,7 +410,7 @@ export default function Dashboard() {
                   {candidate.match_score !== null ? `${candidate.match_score}%` : "N/A"}
                 </span>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
                   <span className="text-slate-500 text-xs block">Applied For</span>
@@ -432,7 +432,7 @@ export default function Dashboard() {
                 </button>
                 <div className="flex space-x-2">
                   {candidate.resume_url && (
-                    <button 
+                    <button
                       onClick={() => handleViewCv(candidate.resume_url!)}
                       className="text-indigo-600 bg-indigo-50 p-2 rounded-lg"
                       title="View CV"
@@ -440,7 +440,7 @@ export default function Dashboard() {
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                     </button>
                   )}
-                  <button 
+                  <button
                     onClick={() => setCandidateToDelete(candidate.id)}
                     className="text-red-600 bg-red-50 p-2 rounded-lg"
                     title="Delete Candidate"
@@ -456,7 +456,7 @@ export default function Dashboard() {
                   <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm mb-4">
                     <AiSummaryFormatter summary={candidate.ai_summary} />
                   </div>
-                  
+
                   {candidate.score_breakdown && (
                     <>
                       <h4 className="text-sm font-semibold text-slate-900 mb-2">Score Breakdown</h4>
@@ -476,7 +476,7 @@ export default function Dashboard() {
                           }
                         })()}
                       </div>
-                      
+
                       {(() => {
                         try {
                           const breakdown = JSON.parse(candidate.score_breakdown);
@@ -526,14 +526,14 @@ export default function Dashboard() {
             <h3 className="text-lg font-bold text-slate-900 mb-2">Delete Candidate</h3>
             <p className="text-slate-500 mb-6">Yakin ingin menghapus kandidat ini? Data yang dihapus tidak dapat dikembalikan.</p>
             <div className="flex justify-end space-x-3">
-              <button 
+              <button
                 onClick={() => setCandidateToDelete(null)}
                 className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
                 disabled={isDeleting}
               >
                 Batal
               </button>
-              <button 
+              <button
                 onClick={handleDeleteCandidate}
                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors flex items-center"
                 disabled={isDeleting}
@@ -550,7 +550,7 @@ export default function Dashboard() {
           <div className="bg-white rounded-2xl w-full max-w-4xl h-[90vh] shadow-2xl border border-slate-100 flex flex-col overflow-hidden">
             <div className="flex justify-between items-center p-4 border-b border-slate-200">
               <h3 className="text-lg font-bold text-slate-900">View CV</h3>
-              <button 
+              <button
                 onClick={closeCvViewer}
                 className="text-slate-400 hover:text-red-500 transition-colors p-1"
               >
@@ -566,8 +566,8 @@ export default function Dashboard() {
                   </div>
                 </div>
               ) : (
-                <iframe 
-                  src={`${cvUrlToView}#view=FitH`} 
+                <iframe
+                  src={`${cvUrlToView}#view=FitH`}
                   className="w-full h-full border-0"
                   title="CV Viewer"
                 >
@@ -592,7 +592,7 @@ export default function Dashboard() {
               <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
                 <span>🧠</span> How AI Match Score Logic Works
               </h3>
-              <button 
+              <button
                 onClick={() => setIsExplanationOpen(false)}
                 className="text-slate-400 hover:text-red-500 transition-colors p-1 bg-slate-100 hover:bg-red-50 rounded-lg"
               >
@@ -607,15 +607,15 @@ export default function Dashboard() {
                   <li><strong>Semantic Matching (AI):</strong> Understands meaning and context. AI knows that "Programmer" and "Software Developer" share the same meaning, detecting a match despite different wording.</li>
                 </ul>
               </div>
-              
+
               <div>
-                <h4 className="font-bold text-indigo-900 text-base mb-2">2. How does the BAAI/bge-m3 model calculate scores?</h4>
-                <p className="mb-2">This Hugging Face AI model acts as a "translator" that converts text into numerical coordinates (Vector Embeddings):</p>
+                <h4 className="font-bold text-indigo-900 text-base mb-2">2. How does the BAAI/bge-m3 model calculate the Semantic Score?</h4>
+                <p className="mb-2">This model acts as a "translator" that converts text into numerical vectors (Embeddings) to measure contextual similarity:</p>
                 <ul className="list-decimal pl-5 space-y-1">
                   <li>The AI takes the Job Description (HR requirements).</li>
                   <li>It takes the Candidate's full CV text (skills, education, experiences) and splits it into smaller chunks so no context is lost.</li>
-                  <li>The system then measures the similarity between the job description and all the CV chunks. The scores are averaged.</li>
-                  <li><strong>Normalization:</strong> If the average similarity is below 35% (the minimum threshold), the score decays exponentially to near-zero. This aggressively penalizes irrelevant CVs.</li>
+                  <li>The system measures the similarity between the job description and all CV chunks. The scores are averaged.</li>
+                  <li><strong>Normalization:</strong> If the average similarity is below 35% (the minimum threshold), the score decays to near-zero. This aggressively penalizes irrelevant CVs.</li>
                 </ul>
               </div>
 
@@ -630,16 +630,31 @@ export default function Dashboard() {
                     <span className="font-bold text-indigo-600">Hard Skill Match (30% Weight):</span> Checks for absolute/mandatory skill matches. Ensures the exact skills requested by HR are possessed by the candidate.
                   </div>
                   <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                    <span className="font-bold text-indigo-600">Experience Match (20% Weight):</span> Evaluates experience. If the candidate's experience is greater than or equal to the HR minimum requirement, they score 100%. If less, the score is reduced proportionally.
+                    <span className="font-bold text-indigo-600">Experience Match (20% Weight):</span> If the candidate's experience meets or exceeds the HR minimum requirement, they score 100%. If less, the score is reduced proportionally.
                   </div>
                   <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                    <span className="font-bold text-indigo-600">Education Match (10% Weight):</span> Educational background assessment (the system currently awards full points by default).
+                    <span className="font-bold text-indigo-600">Education Match (10% Weight):</span> Educational background assessment (currently awards full points by default).
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-indigo-900 text-base mb-2">4. AI Models Used in This System</h4>
+                <p className="mb-3">This system uses two specialized AI models from Hugging Face, each with a distinct role:</p>
+                <div className="space-y-3">
+                  <div className="bg-purple-50 p-3 rounded-lg border border-purple-100">
+                    <p className="font-bold text-purple-700">BAAI/bge-m3 — Semantic Embedding Model</p>
+                    <p className="mt-1 text-slate-600">Used exclusively for calculating the Semantic Score (40% weight). Converts CV and job description text into mathematical vectors to measure contextual similarity.</p>
+                  </div>
+                  <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-100">
+                    <p className="font-bold text-indigo-700">Qwen/Qwen2.5-7B-Instruct — Large Language Model (7B Parameters)</p>
+                    <p className="mt-1 text-slate-600">An efficient, instruction-tuned language model responsible for three key tasks: (1) extracting structured data from raw CV PDFs, (2) parsing job descriptions into structured skill criteria, and (3) generating the Kelebihan / Kekurangan / Verdict AI summary for each candidate.</p>
                   </div>
                 </div>
               </div>
             </div>
             <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex justify-end">
-              <button 
+              <button
                 onClick={() => setIsExplanationOpen(false)}
                 className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl transition-colors shadow-sm"
               >
@@ -658,7 +673,7 @@ export default function Dashboard() {
               <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
                 <span>🚀</span> Quick Guide: How to Use the AI ATS
               </h3>
-              <button 
+              <button
                 onClick={() => setIsQuickGuideOpen(false)}
                 className="text-slate-400 hover:text-red-500 transition-colors p-1 bg-slate-100 hover:bg-red-50 rounded-lg"
               >
@@ -686,7 +701,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex justify-end">
-              <button 
+              <button
                 onClick={() => setIsQuickGuideOpen(false)}
                 className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl transition-colors shadow-sm"
               >

@@ -1,6 +1,8 @@
 import os
+import re
 import json
 import uuid
+import asyncio
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from openai import AsyncOpenAI
 from dotenv import load_dotenv
@@ -61,37 +63,63 @@ async def upload_cv(file: UploadFile = File(...)):
         
         pdf_text = extract_text_from_pdf(contents)
         
-        prompt = f"""Kamu adalah sistem HR. Ekstrak data lengkap CV berikut. Kembalikan HANYA dalam format JSON murni dengan keys:
-- 'name' (string)
-- 'email' (string)
-- 'skills' (array of strings)
-- 'total_experience_years' (integer) -> Hitung total durasi pengalaman kerja dalam hitungan tahun secara teliti. Jika belum ada pengalaman atau kurang dari 1 tahun, isi 0.
-- 'education' (array of strings)
-- 'experience_details' (array of strings) -> cantumkan posisi, nama perusahaan, dan durasi.
-- 'projects' (array of strings)
+        prompt = f"""You are an HR data extraction system. Extract structured data from the CV text below.
+Return ONLY a valid JSON object with exactly these keys. No extra text, no markdown, no code blocks.
 
-Jangan ada teks tambahan di luar JSON.
-        
-Teks CV:
+- "name": full name of the candidate (string)
+- "email": email address (string, or empty string if not found)
+- "skills": list of all technical and soft skills mentioned (array of strings)
+- "total_experience_years": total years of professional work experience as an integer. Calculate carefully from all work history dates. Use 0 if less than 1 year or no experience.
+- "education": list of educational qualifications (array of strings)
+- "experience_details": list of all work experiences (array of strings, format: "Job Title at Company Name (Duration)")
+- "projects": list of notable projects or achievements (array of strings, empty array if none)
+
+CV Text:
 {pdf_text}
 """
         
-        response = await client.chat.completions.create(
-            model="meta-llama/Llama-3.1-8B-Instruct:novita",
-            messages=[
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.1,
-            max_tokens=1024,
-        )
+        # Retry mechanism for LLM API to prevent rate limiting
+        max_retries = 3
+        ai_response = ""
+        for attempt in range(max_retries):
+            try:
+                response = await client.chat.completions.create(
+                    model="Qwen/Qwen2.5-7B-Instruct:together",
+                    messages=[
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.1,
+                    max_tokens=1500,
+                )
+                ai_response = response.choices[0].message.content.strip()
+                break
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    print(f"LLM extraction error, retrying in {2 ** attempt}s... ({e})")
+                    await asyncio.sleep(2 ** attempt)
+                else:
+                    raise Exception(f"AI API failed after {max_retries} attempts: {str(e)}")
         
-        ai_response = response.choices[0].message.content.strip()
         
-        if ai_response.startswith("```json"):
-            ai_response = ai_response[7:-3].strip()
-        elif ai_response.startswith("```"):
-            ai_response = ai_response[3:-3].strip()
-            
+        # Extract JSON from response — handles markdown fences and embedded JSON
+        def extract_json(text: str) -> str:
+            if text.startswith('```json'):
+                text = text[7:]
+                text = text[:text.rfind('```')].strip() if '```' in text else text.strip()
+            elif text.startswith('```'):
+                text = text[3:]
+                text = text[:text.rfind('```')].strip() if '```' in text else text.strip()
+            if not text.startswith('{'):
+                match = re.search(r'\{[\s\S]*\}', text)
+                if match:
+                    text = match.group()
+            return text.strip()
+
+        raw_for_debug = ai_response
+        ai_response = extract_json(ai_response)
+        if not ai_response:
+            print(f"[DEBUG] Empty after extraction. Raw (first 500): {raw_for_debug[:500]!r}")
+            raise ValueError("Model returned no usable JSON content.")
         parsed_data = json.loads(ai_response)
         
         return {
@@ -99,10 +127,23 @@ Teks CV:
             "extracted_data": parsed_data,
             "resume_url": resume_url
         }
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=500, detail="Failed to parse AI response as JSON")
+    except json.JSONDecodeError as e:
+        print(f"JSON parse error. Raw response was: {ai_response!r}")
+        raise HTTPException(status_code=500, detail=f"Failed to parse AI response as JSON: {str(e)}")
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        error_msg = str(e)
+        # Detect API rate limit / quota errors
+        if any(keyword in error_msg.lower() for keyword in ["429", "rate limit", "quota", "too many requests", "timeout", "timed out"]):
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "error_type": "api_limit",
+                    "message": "Gagal menganalisis CV. Limit API gratis dari developer mungkin sedang habis. Silakan coba beberapa saat lagi."
+                }
+            )
+        raise HTTPException(status_code=500, detail=error_msg)
 
 @router.post("/", response_model=schemas.CandidateResponse)
 def create_candidate(candidate: schemas.CandidateCreate, db: Session = Depends(get_db)):

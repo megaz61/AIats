@@ -1,6 +1,7 @@
 import os
 import math
 import json
+import asyncio
 from huggingface_hub import InferenceClient
 from sqlalchemy.orm import Session
 from models import models
@@ -63,11 +64,23 @@ async def calculate_and_save_match_score(db: Session, candidate_id: int):
             chunks = [""]
             
         try:
-            result = client_embed.sentence_similarity(
-                job_text,
-                chunks,
-                model="BAAI/bge-m3",
-            )
+            max_retries = 3
+            result = None
+            for attempt in range(max_retries):
+                try:
+                    result = client_embed.sentence_similarity(
+                        job_text,
+                        chunks,
+                        model="BAAI/bge-m3",
+                    )
+                    break
+                except Exception as e:
+                    if attempt < max_retries - 1:
+                        print(f"Embedding error, retrying in {2 ** attempt}s... ({e})")
+                        await asyncio.sleep(2 ** attempt)
+                    else:
+                        raise e
+            
             avg_score = sum(result) / len(result)
             
             THRESHOLD = 0.35
@@ -112,46 +125,56 @@ async def calculate_and_save_match_score(db: Session, candidate_id: int):
     final_score = (semantic_score * 0.4) + (skill_score * 0.3) + (exp_score * 0.2) + (edu_score * 0.1)
 
     # 5. Explainable AI Summary
-    prompt = f"""Kamu adalah asisten HR. Evaluasi kandidat ini berdasarkan Kriteria Pekerjaan dan Teks CV Kandidat.
-Bandingkan secara langsung kriteria yang diminta dengan pengalaman/skill yang ada di CV.
+    prompt = f"""You are an expert HR evaluator. Analyze the candidate profile against the job requirements and write your evaluation in Bahasa Indonesia using the EXACT format below. Do not add any text outside this format.
 
-Aturan Penting:
-1. Jika pengalaman kandidat LEBIH dari atau SAMA DENGAN pengalaman minimal yang diminta, ini adalah hal bagus. Masukkan sebagai "Kelebihan", JANGAN PERNAH memasukkannya sebagai "Kekurangan".
-2. Jika kandidat belum memenuhi syarat, gunakan frasa "kurang cocok" (jangan gunakan kata "tidak cocok").
+Job Requirements:
+- Description: {job.description}
+- Required skills: {', '.join(job_req) if job_req else 'Not specified'}
+- Minimum experience: {min_exp} years
 
-Kriteria Pekerjaan:
-{job.description}
-Kriteria wajib: {', '.join(job_req)}
-Pengalaman minimal: {min_exp} tahun
+Candidate Profile:
+- Skills: {', '.join(cand_skills) if cand_skills else 'Not listed'}
+- Education: {', '.join(cand_edu) if cand_edu else 'Not listed'}
+- Work Experience: {', '.join(cand_exp_det) if cand_exp_det else 'Not listed'}
+- Projects: {', '.join(cand_proj) if cand_proj else 'Not listed'}
+- Total Experience: {cand_exp} years
+- Missing required skills: {', '.join(missing_req) if missing_req else 'None (all required skills are met)'}
 
-Teks CV Kandidat:
-{candidate_full_text}
-Pengalaman kandidat: {cand_exp} tahun
+Rules:
+1. If candidate experience ({cand_exp} years) >= minimum required ({min_exp} years), this is a STRENGTH. NEVER list it as a weakness.
+2. Write exactly 2-3 bullet points under Kelebihan.
+3. Write exactly 1-2 bullet points under Kekurangan. If no real weaknesses, write the least critical gap.
+4. Verdict must be one concise sentence in Bahasa Indonesia.
 
-Kandidat kekurangan skill wajib: {', '.join(missing_req) if missing_req else 'Tidak ada'}.
-
-Buat output HANYA dengan struktur persis seperti berikut tanpa tambahan apa pun (gunakan format Markdown):
 Kelebihan:
-- [Poin 1]
-- [Poin 2]
+- [point 1]
+- [point 2]
 
 Kekurangan:
-- [Poin 1]
-- [Poin 2]
+- [point 1]
 
-Verdict: [Satu kalimat rekomendasi ringkas apakah kandidat ini cocok atau kurang cocok]"""
+Verdict: [one sentence]"""
     
-    try:
-        response = await client_llm.chat.completions.create(
-            model="meta-llama/Llama-3.1-8B-Instruct:novita",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.2,
-            max_tokens=300,
-        )
-        ai_summary = response.choices[0].message.content.strip()
-    except Exception as e:
-        print("LLM Error:", e)
-        ai_summary = "Kandidat memiliki beberapa keahlian relevan namun perlu ditinjau lebih lanjut."
+    max_retries = 3
+    ai_summary = "Kandidat memiliki beberapa keahlian relevan namun perlu ditinjau lebih lanjut."
+    for attempt in range(max_retries):
+        try:
+            response = await client_llm.chat.completions.create(
+                model="Qwen/Qwen2.5-7B-Instruct:together",
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.1,
+                max_tokens=600,
+            )
+            ai_summary = response.choices[0].message.content.strip()
+            break
+        except Exception as e:
+            if attempt < max_retries - 1:
+                print(f"LLM Error, retrying in {2 ** attempt}s... ({e})")
+                await asyncio.sleep(2 ** attempt)
+            else:
+                print("LLM Error after retries:", e)
 
     candidate.match_score = round(final_score, 2)
     candidate.score_breakdown = json.dumps({

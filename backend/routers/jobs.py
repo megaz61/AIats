@@ -1,5 +1,7 @@
 import os
+import re
 import json
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
@@ -19,29 +21,47 @@ client = AsyncOpenAI(
 )
 
 async def parse_job_description(description: str):
-    prompt = f"""Kamu adalah asisten HR. Ekstrak kriteria pekerjaan dari teks berikut. Kembalikan HANYA format JSON murni dengan keys:
-'required_skills' (array of string), 'preferred_skills' (array of string), 'min_experience' (integer, 0 jika tidak ada). Jangan tambahkan teks lain.
+    prompt = f"""You are an HR assistant. Extract job requirements from the job description below.
+Return ONLY a valid JSON object with exactly these keys. No extra text, no markdown, no code blocks.
 
-Deskripsi Pekerjaan:
+- "required_skills": list of mandatory skills the candidate must have (array of strings)
+- "preferred_skills": list of nice-to-have or bonus skills (array of strings, can be empty)
+- "min_experience": minimum years of work experience required as an integer (use 0 if not specified)
+
+Job Description:
 {description}
 """
-    try:
-        response = await client.chat.completions.create(
-            model="meta-llama/Llama-3.1-8B-Instruct:novita",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.1,
-            max_tokens=1024,
-        )
-        ai_response = response.choices[0].message.content.strip()
-        if ai_response.startswith("```json"):
-            ai_response = ai_response[7:-3].strip()
-        elif ai_response.startswith("```"):
-            ai_response = ai_response[3:-3].strip()
-            
-        return json.loads(ai_response)
-    except Exception as e:
-        print("Failed to parse JD:", e)
-        return {"required_skills": [], "preferred_skills": [], "min_experience": 0}
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = await client.chat.completions.create(
+                model="Qwen/Qwen2.5-7B-Instruct:together",
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.1,
+                max_tokens=512,
+            )
+            ai_response = response.choices[0].message.content.strip()
+            # Strip markdown fences if present
+            if ai_response.startswith('```json'):
+                ai_response = ai_response[7:]
+                ai_response = ai_response[:ai_response.rfind('```')].strip() if '```' in ai_response else ai_response.strip()
+            elif ai_response.startswith('```'):
+                ai_response = ai_response[3:]
+                ai_response = ai_response[:ai_response.rfind('```')].strip() if '```' in ai_response else ai_response.strip()
+            if not ai_response.startswith('{'):
+                match = re.search(r'\{[\s\S]*\}', ai_response)
+                if match:
+                    ai_response = match.group()
+            return json.loads(ai_response)
+        except Exception as e:
+            if attempt < max_retries - 1:
+                print(f"JD parse error, retrying in {2 ** attempt}s... ({e})")
+                await asyncio.sleep(2 ** attempt)
+            else:
+                print(f"Failed to parse JD after {max_retries} attempts:", e)
+                return {"required_skills": [], "preferred_skills": [], "min_experience": 0}
 
 @router.post("/", response_model=schemas.JobResponse)
 async def create_job(job: schemas.JobCreate, db: Session = Depends(get_db)):

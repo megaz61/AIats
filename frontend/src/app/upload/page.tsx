@@ -21,6 +21,7 @@ export default function UploadPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [fileQueue, setFileQueue] = useState<FileStatus[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [apiLimitError, setApiLimitError] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -99,7 +100,8 @@ export default function UploadPage() {
     setFileQueue(prev => prev.filter((_, i) => i !== index));
   };
 
-  const uploadSingleFile = async (fileStatus: FileStatus, index: number) => {
+  // Returns true on success, false on failure
+  const uploadSingleFile = async (fileStatus: FileStatus, index: number): Promise<boolean> => {
     setFileQueue(prev => prev.map((item, i) => i === index ? { ...item, status: 'uploading', message: 'Extracting data...' } : item));
     
     try {
@@ -110,19 +112,28 @@ export default function UploadPage() {
         method: "POST",
         body: formData,
       });
-      if (!uploadRes.ok) throw new Error("Failed to extract CV");
+      if (!uploadRes.ok) {
+        const errJson = await uploadRes.json().catch(() => ({ detail: "Server error" }));
+        // Check if it's an API rate-limit error (503 + api_limit flag)
+        if (uploadRes.status === 503 && errJson?.detail?.error_type === "api_limit") {
+          setApiLimitError(true);
+          throw new Error(errJson.detail.message || "API limit reached.");
+        }
+        const errMsg = typeof errJson.detail === "object" ? errJson.detail.message : (errJson.detail || "Failed to extract CV");
+        throw new Error(errMsg);
+      }
       const uploadData = await uploadRes.json();
       const extractedData = uploadData.extracted_data;
       
       setFileQueue(prev => prev.map((item, i) => i === index ? { ...item, message: 'Saving candidate...' } : item));
       
-        const finalEmail = (extractedData.email && extractedData.email.includes('@') && !extractedData.email.toLowerCase().includes('unknown'))
-          ? extractedData.email
-          : `candidate_${Date.now()}_${Math.floor(Math.random() * 1000)}@example.com`;
+      const finalEmail = (extractedData.email && extractedData.email.includes('@') && !extractedData.email.toLowerCase().includes('unknown'))
+        ? extractedData.email
+        : `candidate_${Date.now()}_${Math.floor(Math.random() * 1000)}@example.com`;
 
-        const candidatePayload = {
-          name: extractedData.name || "Unknown Candidate",
-          email: finalEmail,
+      const candidatePayload = {
+        name: extractedData.name || "Unknown Candidate",
+        email: finalEmail,
         skills: JSON.stringify(extractedData.skills || []),
         education: JSON.stringify(extractedData.education || []),
         experience_details: JSON.stringify(extractedData.experience_details || []),
@@ -137,18 +148,21 @@ export default function UploadPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(candidatePayload),
       });
-      if (!createRes.ok) throw new Error("Failed to save candidate");
+      if (!createRes.ok) throw new Error("Failed to save candidate to database");
       const createdCandidate = await createRes.json();
       
-      setFileQueue(prev => prev.map((item, i) => i === index ? { ...item, message: 'Calculating match...' } : item));
+      setFileQueue(prev => prev.map((item, i) => i === index ? { ...item, message: 'Calculating match score...' } : item));
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/candidates/${createdCandidate.id}/calculate-match`, {
         method: "POST",
       });
       
       setFileQueue(prev => prev.map((item, i) => i === index ? { ...item, status: 'success', message: 'Done!' } : item));
-    } catch (error) {
-      console.error(error);
-      setFileQueue(prev => prev.map((item, i) => i === index ? { ...item, status: 'error', message: 'Error processing file' } : item));
+      return true;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Error processing file';
+      console.error(`File ${index + 1} failed:`, error);
+      setFileQueue(prev => prev.map((item, i) => i === index ? { ...item, status: 'error', message } : item));
+      return false;
     }
   };
 
@@ -158,6 +172,7 @@ export default function UploadPage() {
       alert("Please select a job first.");
       return;
     }
+    setApiLimitError(false);
     
     const totalSize = fileQueue.reduce((acc, curr) => acc + curr.file.size, 0);
     if (totalSize > MAX_TOTAL_SIZE) {
@@ -167,15 +182,32 @@ export default function UploadPage() {
     
     setIsUploading(true);
     
-    for (let i = 0; i < fileQueue.length; i++) {
-      if (fileQueue[i].status !== 'success') {
-        await uploadSingleFile(fileQueue[i], i);
+    // Snapshot the queue to avoid stale closure issues inside the loop.
+    // We use the snapshot to determine which files to process and pass
+    // the correct file object to uploadSingleFile. Results are tracked
+    // locally via successCount — NOT via the fileQueue state (which is async).
+    const snapshotQueue = [...fileQueue];
+    let successCount = 0;
+    
+    for (let i = 0; i < snapshotQueue.length; i++) {
+      if (snapshotQueue[i].status === 'success') {
+        successCount++;
+        continue;
+      }
+      
+      const ok = await uploadSingleFile(snapshotQueue[i], i);
+      if (ok) successCount++;
+      
+      // Add delay between files to avoid rate limiting from Hugging Face API
+      if (i < snapshotQueue.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 3000));
       }
     }
     
     setIsUploading(false);
     
-    if (fileQueue.every(f => f.status === 'success' || f.status === 'pending')) {
+    // Only redirect if every file was successfully processed
+    if (successCount === snapshotQueue.length) {
       setTimeout(() => {
         router.push("/");
       }, 2000);
@@ -190,6 +222,28 @@ export default function UploadPage() {
           Upload up to 15 PDFs (Max 50MB) to automatically extract data and calculate match score.
         </p>
       </div>
+
+      {/* API Limit Disclaimer Banner */}
+      {apiLimitError && (
+        <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-300 rounded-2xl shadow-sm">
+          <span className="text-xl flex-shrink-0">⚠️</span>
+          <div>
+            <p className="font-semibold text-amber-800 text-sm">Gagal Menganalisis CV</p>
+            <p className="text-amber-700 text-sm mt-0.5">
+              Limit API gratis dari developer mungkin sedang habis. Silakan coba beberapa saat lagi.
+            </p>
+          </div>
+          <button
+            onClick={() => setApiLimitError(false)}
+            className="ml-auto text-amber-500 hover:text-amber-700 flex-shrink-0"
+            aria-label="Tutup notifikasi"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       <div className="glass-panel p-6 rounded-2xl border border-white/40 shadow-sm">
         <label className="block text-sm font-medium text-slate-700 mb-2">Select Job Opening</label>

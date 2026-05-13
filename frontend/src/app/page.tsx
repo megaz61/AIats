@@ -84,6 +84,8 @@ export default function Dashboard() {
   const [expandedCandidateId, setExpandedCandidateId] = useState<number | null>(null);
   const [isExplanationOpen, setIsExplanationOpen] = useState(false);
   const [isQuickGuideOpen, setIsQuickGuideOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   const toggleExpand = (id: number) => {
     setExpandedCandidateId(prev => prev === id ? null : id);
@@ -190,6 +192,49 @@ export default function Dashboard() {
     ? candidates
     : candidates.filter(c => c.job_id === filterJobId);
 
+  const totalPages = Math.max(1, Math.ceil(filteredCandidates.length / ITEMS_PER_PAGE));
+  const paginatedCandidates = filteredCandidates.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  const PaginationControls = () => (
+    <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200/50">
+      <p className="text-xs text-slate-500">
+        Showing {filteredCandidates.length === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredCandidates.length)} of {filteredCandidates.length} candidates
+      </p>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+          disabled={currentPage === 1}
+          className="px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          ← Prev
+        </button>
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+          <button
+            key={page}
+            onClick={() => setCurrentPage(page)}
+            className={`w-8 h-8 text-sm font-medium rounded-lg transition-colors ${
+              page === currentPage
+                ? 'bg-indigo-600 text-white'
+                : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            {page}
+          </button>
+        ))}
+        <button
+          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+          disabled={currentPage === totalPages}
+          className="px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          Next →
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -205,7 +250,10 @@ export default function Dashboard() {
           <select
             className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500"
             value={filterJobId}
-            onChange={(e) => setFilterJobId(e.target.value === "all" ? "all" : Number(e.target.value))}
+            onChange={(e) => {
+              setFilterJobId(e.target.value === "all" ? "all" : Number(e.target.value));
+              setCurrentPage(1);
+            }}
           >
             <option value="all">All Jobs</option>
             {jobs.map(job => (
@@ -262,7 +310,7 @@ export default function Dashboard() {
                   <td colSpan={5} className="px-6 py-12 text-center text-sm text-slate-500">No candidates found for this filter.</td>
                 </tr>
               ) : (
-                filteredCandidates.map((candidate) => (
+                paginatedCandidates.map((candidate) => (
                   <React.Fragment key={candidate.id}>
                     <tr className="hover:bg-white/60 transition-colors">
                       <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
@@ -390,6 +438,7 @@ export default function Dashboard() {
             </tbody>
           </table>
         </div>
+        {!loading && filteredCandidates.length > 0 && <PaginationControls />}
       </div>
 
       {/* Mobile Card View */}
@@ -399,7 +448,7 @@ export default function Dashboard() {
         ) : filteredCandidates.length === 0 ? (
           <div className="p-6 text-center text-sm text-slate-500 bg-white/40 rounded-2xl border border-white/40 shadow-sm">No candidates found for this filter.</div>
         ) : (
-          filteredCandidates.map((candidate) => (
+          paginatedCandidates.map((candidate) => (
             <div key={candidate.id} className="bg-white/60 backdrop-blur-sm border border-slate-200/60 rounded-2xl p-4 shadow-sm flex flex-col gap-3">
               <div className="flex justify-between items-start">
                 <div>
@@ -516,6 +565,11 @@ export default function Dashboard() {
               )}
             </div>
           ))
+        )}
+        {!loading && filteredCandidates.length > 0 && (
+          <div className="bg-white/60 backdrop-blur-sm border border-slate-200/60 rounded-2xl shadow-sm mt-2">
+            <PaginationControls />
+          </div>
         )}
       </div>
 
